@@ -1,0 +1,67 @@
+# ── Secrets / local config ─────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.claude/
+
+# ── Personal dev notes (not part of the project docs) ──
+Note.txt
+
+# ── Generated output (folders kept via .gitkeep) ───
+outputs/*
+uploads/*
+!outputs/.gitkeep
+!uploads/.gitkeep
+*.log
+
+# ── Model weights, checkpoints, caches ─────────────
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.onnx
+models/
+checkpoints/
+huggingface/
+hf_cache/
+.cache/
+
+# ── Images and video (everything, then re-allow selected docs/) ──
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+!docs/*.png
+!docs/*.jpg
+!docs/*.gif
+!assets/.gitkeep
+# The full-size demo is too heavy for the repo; docs/demo_small.gif is used.
+docs/demo.gif
+
+# ── Python / environments ──────────────────────────
+__pycache__/
+*.py[cod]
+.Python
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+venv/
+env/
+.venv/
+video-proto/
+sketch-ai/
+
+# ── OS / editor ────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

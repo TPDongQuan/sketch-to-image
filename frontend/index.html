@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sketch to Image AI</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh}
+    header{background:#fff;border-bottom:1px solid #e5e5e5;padding:1rem 2rem;display:flex;align-items:center;gap:12px}
+    header h1{font-size:18px;font-weight:600}
+    header .model-badge{font-size:11px;padding:3px 10px;border-radius:99px;background:#EAF3DE;color:#27500A;margin-left:auto}
+    .container{max-width:1200px;margin:1.5rem auto;padding:0 1rem}
+    .mode-tabs{display:flex;gap:8px;margin-bottom:1.5rem}
+    .mode-tab{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid #ddd;background:#fff;color:#555}
+    .mode-tab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+    .workspace{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+    .card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden}
+    .card-head{padding:12px 16px;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between}
+    .card-head h2{font-size:14px;font-weight:600}
+    .card-body{padding:1rem}
+    #sketch-canvas{border:2px dashed #ddd;border-radius:8px;cursor:crosshair;display:block;width:100%;touch-action:none}
+    #sketch-canvas:hover{border-color:#999}
+    .tools{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+    .tool-btn{padding:6px 12px;border-radius:6px;font-size:12px;border:1px solid #ddd;background:#fff;cursor:pointer;transition:all .15s}
+    .tool-btn:hover{background:#f0f0f0}
+    .tool-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+    .tool-group{display:flex;align-items:center;gap:6px;font-size:12px;color:#666}
+    input[type=range]{width:80px}
+    input[type=color]{width:32px;height:28px;border-radius:4px;border:1px solid #ddd;cursor:pointer;padding:1px}
+    .placeholder{width:100%;aspect-ratio:1;background:#f9f9f9;border:2px dashed #e0e0e0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#aaa;font-size:13px}
+    .placeholder-icon{font-size:32px}
+    .t2i-body{padding:1rem;display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start}
+    .t2i-hint{background:#f9f9f9;border:2px dashed #e0e0e0;border-radius:8px;padding:2rem 1rem;text-align:center;color:#aaa;font-size:13px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+    .settings-card{margin-bottom:1.5rem}
+    .settings-section{margin-bottom:14px}
+    .section-label{font-size:10px;font-weight:600;color:#aaa;letter-spacing:.06em;margin-bottom:8px;text-transform:uppercase}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+    .grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+    .field label{display:block;font-size:12px;color:#666;margin-bottom:4px;font-weight:500}
+    .field input,.field textarea,.field select{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;background:#fff;color:#1a1a1a}
+    .field input:focus,.field textarea:focus,.field select:focus{border-color:#555}
+    .field textarea{height:60px;resize:none}
+    .field input[type=range]{padding:4px 0}
+    .field .hint{font-size:11px;color:#aaa;margin-top:2px}
+    .val-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+    .val-badge{font-size:12px;font-weight:500;color:#1a1a1a;background:#f0f0f0;padding:2px 8px;border-radius:4px;min-width:40px;text-align:center}
+    .divider{height:1px;background:#f0f0f0;margin:14px 0}
+    .tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+    .tag{font-size:11px;padding:3px 9px;border-radius:99px;border:1px solid #e0e0e0;background:#fff;color:#666;cursor:pointer;user-select:none;transition:all .15s}
+    .tag:hover{background:#f5f5f5}
+    .tag.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+    .seed-row{display:flex;gap:6px}
+    .seed-row input{flex:1}
+    .seed-row button{padding:6px 10px;font-size:12px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer}
+    .seed-row button:hover{background:#f0f0f0}
+    .btn-generate{width:100%;padding:12px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;transition:background .15s;margin-top:4px}
+    .btn-generate:hover:not(:disabled){background:#333}
+    .btn-generate:disabled{opacity:.5;cursor:not-allowed}
+    .progress-wrap{display:none;margin-top:12px}
+    .progress-wrap.show{display:block}
+    .progress-bar-bg{background:#eee;border-radius:99px;height:6px;margin-bottom:6px;overflow:hidden}
+    .progress-bar-fill{height:100%;background:#1a1a1a;border-radius:99px;width:0%;transition:width .5s ease}
+    .progress-label{font-size:12px;color:#666}
+    #status-bar{padding:8px 16px;background:#f0f0f0;border-radius:8px;font-size:12px;color:#666;margin-top:1rem}
+
+    /* ── Story Mode ─────────────────────────────────── */
+    #story-panel{display:none}
+    .story-workspace{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+    .story-nav{display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+    .nav-btn{width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+    .nav-btn:hover:not(:disabled){background:#f0f0f0}
+    .nav-btn:disabled{opacity:.3;cursor:not-allowed}
+    .scene-counter{font-size:13px;font-weight:500;color:#555;min-width:60px;text-align:center}
+    .scene-box{background:#f9f9f9;border:1px solid #e5e5e5;border-radius:10px;padding:12px;margin-bottom:8px;position:relative;transition:all .15s}
+    .scene-box.active{background:#fff;border-color:#1a1a1a}
+    .scene-box-num{font-size:10px;font-weight:600;color:#aaa;margin-bottom:4px;letter-spacing:.05em}
+    .scene-box textarea{width:100%;border:none;background:transparent;font-size:13px;color:#1a1a1a;resize:none;outline:none;height:60px;font-family:inherit}
+    .scene-del{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;border:none;background:#fee;color:#c00;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s}
+    .scene-box:hover .scene-del{opacity:1}
+    .adv-toggle{background:none;border:none;color:#999;font-size:11px;cursor:pointer;padding:4px 0;text-align:left;display:block}
+    .adv-toggle:hover{color:#555}
+    .scene-advanced{margin-top:4px;padding-top:8px;border-top:1px dashed #e5e5e5}
+    .scene-advanced .field{margin-bottom:8px}
+    .scene-advanced .field label{font-size:11px}
+    .scene-advanced .field input{padding:6px 8px;font-size:12px}
+    .btn-add-scene{width:100%;padding:10px;border:2px dashed #ddd;border-radius:8px;background:transparent;color:#888;font-size:13px;cursor:pointer;transition:all .15s;margin-top:4px}
+    .btn-add-scene:hover{border-color:#888;color:#555}
+    .story-result-area{position:relative}
+    .story-img-wrap{position:relative;border-radius:10px;overflow:hidden;background:#f9f9f9;border:2px dashed #e0e0e0;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+    .story-img-wrap img{width:100%;height:100%;object-fit:cover;display:none;border-radius:8px}
+    .story-img-wrap .ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:#aaa;font-size:13px}
+    .story-img-wrap .ph-icon{font-size:28px}
+    .story-img-badge{position:absolute;bottom:8px;left:8px;font-size:11px;padding:3px 9px;border-radius:99px;background:rgba(0,0,0,.6);color:#fff}
+    .story-img-dl{position:absolute;bottom:8px;right:8px;font-size:11px;padding:4px 10px;border-radius:99px;background:rgba(0,0,0,.6);color:#fff;text-decoration:none;display:none}
+    .story-settings{background:#f9f9f9;border:1px solid #e5e5e5;border-radius:10px;padding:12px;margin-bottom:1rem}
+    .story-settings-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .neg-prompt-row{margin-top:8px}
+    .story-all-scenes{display:flex;gap:8px;overflow-x:auto;padding:8px 0;margin-top:1rem}
+    .thumb{flex-shrink:0;width:72px;height:72px;border-radius:6px;border:2px solid #e5e5e5;overflow:hidden;cursor:pointer;transition:border-color .15s;background:#f9f9f9;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa}
+    .thumb img{width:100%;height:100%;object-fit:cover}
+    .thumb.active{border-color:#1a1a1a}
+    .thumb.pending{border-style:dashed}
+
+    @media(max-width:640px){
+      .workspace,.grid2,.grid3,.grid4,.t2i-body,.story-workspace,.story-settings-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:22px">✏️</div>
+  <h1>Sketch to Image AI</h1>
+  <span id="model-badge" class="model-badge">Loading...</span>
+</header>
+
+<div class="container">
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tab-sketch" onclick="setMode('sketch')">✏️ Sketch to Image</button>
+    <button class="mode-tab" id="tab-text"   onclick="setMode('text')">💬 Text to Image</button>
+    <button class="mode-tab" id="tab-story"  onclick="setMode('story')">📖 Story Mode</button>
+  </div>
+
+  <!-- ── Sketch panel ── -->
+  <div id="sketch-panel">
+    <div class="workspace">
+      <div class="card">
+        <div class="card-head">
+          <h2>✏️ Vẽ sketch của bạn</h2>
+          <div style="display:flex;gap:6px;align-items:center">
+            <label for="upload-sketch" class="tool-btn" style="cursor:pointer;margin:0">📂 Upload</label>
+            <input type="file" id="upload-sketch" accept="image/*" style="display:none" onchange="loadSketchFromFile(this)"/>
+            <button class="tool-btn" onclick="clearCanvas()">🗑 Xóa</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="tools">
+            <button class="tool-btn active" id="btn-pen" onclick="setTool('pen')">✏️ Bút</button>
+            <button class="tool-btn" id="btn-eraser" onclick="setTool('eraser')">🧹 Tẩy</button>
+            <div class="tool-group">Cỡ: <input type="range" id="brush-size" min="1" max="30" value="3" oninput="brushSize=this.value"></div>
+            <div class="tool-group">Màu: <input type="color" id="brush-color" value="#000000" oninput="brushColor=this.value"></div>
+          </div>
+          <canvas id="sketch-canvas" width="512" height="512"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>🎨 Ảnh được tạo ra</h2>
+          <a id="dl-sketch" style="display:none;font-size:12px;color:#555;text-decoration:none" download="sketch_output.jpg">⬇ Tải về</a>
+        </div>
+        <div class="card-body">
+          <div class="placeholder" id="placeholder-sketch"><div class="placeholder-icon">🖼️</div><div>Vẽ sketch rồi nhấn Generate</div></div>
+          <img id="result-sketch" style="width:100%;border-radius:8px;display:none"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Text panel ── -->
+  <div id="text-panel" style="display:none">
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-head">
+        <h2>💬 Text to Image</h2>
+        <a id="dl-text" style="display:none;font-size:12px;color:#555;text-decoration:none" download="text_output.jpg">⬇ Tải về</a>
+      </div>
+      <div class="t2i-body">
+        <div class="t2i-hint"><div style="font-size:32px">💬</div><div>Chỉ cần nhập prompt</div><div style="font-size:11px">Không cần vẽ sketch</div></div>
+        <div>
+          <div class="placeholder" id="placeholder-text"><div class="placeholder-icon">🖼️</div><div>Nhập prompt rồi nhấn Generate</div></div>
+          <img id="result-text" style="width:100%;border-radius:8px;display:none"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Story panel ── -->
+  <div id="story-panel">
+    <div class="story-workspace">
+
+      <!-- Trái: danh sách scenes -->
+      <div class="card">
+        <div class="card-head">
+          <h2>📖 Kịch bản Story</h2>
+          <div class="story-nav">
+            <button class="nav-btn" id="prev-btn" onclick="goScene(-1)" disabled>◀</button>
+            <span class="scene-counter" id="scene-counter">1 / 1</span>
+            <button class="nav-btn" id="next-btn" onclick="goScene(1)" disabled>▶</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="scenes-list"></div>
+          <button class="btn-add-scene" onclick="addScene()">+ Thêm cảnh mới</button>
+
+          <!-- Negative prompt chung -->
+          <div class="neg-prompt-row">
+            <div class="field">
+              <label>Negative prompt (dùng chung cho tất cả cảnh)</label>
+              <textarea id="story-neg-prompt" style="height:50px">(worst quality:2), (low quality:2), blurry, bad anatomy, watermark, text</textarea>
+            </div>
+          </div>
+
+          <!-- Settings story -->
+          <div class="story-settings" style="margin-top:12px">
+            <div class="section-label" style="margin-bottom:8px">Cài đặt Story</div>
+            <div class="story-settings-grid">
+              <div class="field">
+                <div class="val-row"><label>Steps</label><span class="val-badge" id="sv-steps">30</span></div>
+                <input type="range" min="10" max="50" value="30" step="1"
+                       oninput="document.getElementById('sv-steps').textContent=this.value">
+                <div class="hint">30 là đủ cho story</div>
+              </div>
+              <div class="field">
+                <div class="val-row"><label>Transition strength</label><span class="val-badge" id="sv-trans">0.90</span></div>
+                <input type="range" min="0.3" max="0.9" step="0.05" value="0.9"
+                       oninput="document.getElementById('sv-trans').textContent=parseFloat(this.value).toFixed(2)">
+                <div class="hint">0.9 (mặc định) = đổi cảnh/tư thế chắc chắn · thấp hơn = dễ bị kẹt cảnh/tư thế cũ</div>
+              </div>
+              <div class="field">
+                <div class="val-row"><label>Guidance scale</label><span class="val-badge" id="sv-guid">9.0</span></div>
+                <input type="range" min="5" max="15" step="0.5" value="9"
+                       oninput="document.getElementById('sv-guid').textContent=parseFloat(this.value).toFixed(1)">
+                <div class="hint">Cao hơn = bám prompt hơn</div>
+              </div>
+            </div>
+            <div class="field" style="margin-top:8px">
+              <label>Kích thước ảnh</label>
+              <select id="story-size">
+                <option value="512x512">512 × 512 — nhanh</option>
+                <option value="640x640">640 × 640 — cân bằng</option>
+                <option value="768x512">768 × 512 — landscape</option>
+                <option value="512x768">512 × 768 — portrait</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn-generate" id="story-btn" onclick="generateStory()">
+            📖 Generate toàn bộ Story
+          </button>
+          <div class="progress-wrap" id="story-progress">
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="story-fill"></div></div>
+            <div class="progress-label" id="story-label">Đang xử lý...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phải: kết quả ảnh hiện tại -->
+      <div class="card">
+        <div class="card-head">
+          <h2 id="story-result-title">🎬 Cảnh 1</h2>
+          <div style="font-size:12px;color:#888">Ảnh có liên kết với cảnh trước</div>
+        </div>
+        <div class="card-body">
+          <div class="story-img-wrap" id="story-img-wrap">
+            <div class="ph" id="story-ph">
+              <div class="ph-icon">🎬</div>
+              <div>Chưa có ảnh</div>
+              <div style="font-size:11px">Nhấn Generate Story để tạo</div>
+            </div>
+            <img id="story-result-img" alt="Story scene"/>
+            <span class="story-img-badge" id="story-img-badge" style="display:none"></span>
+            <a class="story-img-dl" id="story-img-dl" download="scene.jpg">⬇ Tải</a>
+          </div>
+
+          <!-- Thumbnail strip tất cả scenes -->
+          <div style="margin-top:10px">
+            <div style="font-size:11px;color:#aaa;margin-bottom:6px">Tất cả cảnh:</div>
+            <div class="story-all-scenes" id="thumb-strip"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Settings (Sketch + Text) ── -->
+  <div class="card settings-card" id="main-settings">
+    <div class="card-head"><h2>⚙️ Cài đặt</h2></div>
+    <div class="card-body">
+      <div class="settings-section">
+        <div class="section-label">Prompt</div>
+        <div class="grid2">
+          <div class="field">
+            <label>Prompt *</label>
+            <textarea id="prompt" placeholder="VD: a beautiful house, realistic photo, 4k..."></textarea>
+          </div>
+          <div class="field">
+            <label>Negative prompt</label>
+            <textarea id="neg-prompt">(worst quality:2), (low quality:2), (normal quality:2), lowres, bad anatomy, bad hands, ((monochrome)), ((grayscale)), poorly drawn, bad proportions, watermark, text</textarea>
+          </div>
+        </div>
+        <div class="field">
+          <label>Style preset</label>
+          <div class="tag-row">
+            <span class="tag" onclick="toggleTag(this,'realistic photo')">realistic photo</span>
+            <span class="tag" onclick="toggleTag(this,'4k ultra detail')">4k ultra detail</span>
+            <span class="tag" onclick="toggleTag(this,'architectural render')">architectural render</span>
+            <span class="tag" onclick="toggleTag(this,'watercolor painting')">watercolor painting</span>
+            <span class="tag" onclick="toggleTag(this,'oil painting')">oil painting</span>
+            <span class="tag" onclick="toggleTag(this,'cinematic lighting')">cinematic lighting</span>
+            <span class="tag" onclick="toggleTag(this,'golden hour')">golden hour</span>
+            <span class="tag" onclick="toggleTag(this,'night scene')">night scene</span>
+            <span class="tag" onclick="toggleTag(this,'anime style')">anime style</span>
+            <span class="tag" onclick="toggleTag(this,'minimalist')">minimalist</span>
+            <span class="tag" onclick="toggleTag(this,'studio lighting')">studio lighting</span>
+            <span class="tag" onclick="toggleTag(this,'sharp focus')">sharp focus</span>
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="settings-section">
+        <div class="section-label">Model & Chất lượng</div>
+        <div class="grid4">
+          <div class="field" id="cn-type-field">
+            <label>ControlNet mode</label>
+            <select id="cn-type">
+              <option value="scribble">Scribble — vẽ tay</option>
+              <option value="mlsd">MLSD — kiến trúc</option>
+              <option value="canny">Canny — edge</option>
+            </select>
+            <div class="hint">Chọn theo loại sketch</div>
+          </div>
+          <div class="field">
+            <div class="val-row"><label>Steps</label><span class="val-badge" id="v-steps">35</span></div>
+            <input type="range" min="10" max="60" value="35" step="1" oninput="document.getElementById('v-steps').textContent=this.value">
+            <div class="hint">20=nhanh · 35=cân bằng · 50=đẹp</div>
+          </div>
+          <div class="field">
+            <div class="val-row"><label>Guidance scale</label><span class="val-badge" id="v-guid">9.0</span></div>
+            <input type="range" min="1" max="20" step="0.5" value="9" oninput="document.getElementById('v-guid').textContent=parseFloat(this.value).toFixed(1)">
+            <div class="hint">7–9=sáng tạo · 10+=bám prompt</div>
+          </div>
+          <div class="field" id="cn-scale-field">
+            <div class="val-row"><label>ControlNet scale</label><span class="val-badge" id="v-cn">0.9</span></div>
+            <input type="range" min="0.1" max="1.5" step="0.1" value="0.9" oninput="document.getElementById('v-cn').textContent=parseFloat(this.value).toFixed(1)">
+            <div class="hint">0.5=tự do · 1.3=bám sketch</div>
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="settings-section">
+        <div class="section-label">Refinement</div>
+        <div class="grid3">
+          <div class="field">
+            <label>Bật refinement</label>
+            <select id="use-refine">
+              <option value="1">Bật (~+15 giây)</option>
+              <option value="0">Tắt — nhanh hơn</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="val-row"><label>Strength</label><span class="val-badge" id="v-ref">0.25</span></div>
+            <input type="range" min="0.1" max="0.6" step="0.05" value="0.25" oninput="document.getElementById('v-ref').textContent=parseFloat(this.value).toFixed(2)">
+            <div class="hint">0.15=giữ · 0.25=sửa nhẹ</div>
+          </div>
+          <div class="field">
+            <div class="val-row"><label>Steps</label><span class="val-badge" id="v-rstep">20</span></div>
+            <input type="range" min="10" max="30" step="1" value="20" oninput="document.getElementById('v-rstep').textContent=this.value">
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="settings-section">
+        <div class="section-label">Kích thước & Seed</div>
+        <div class="grid2">
+          <div class="field">
+            <label>Kích thước output</label>
+            <select id="img-size">
+              <option value="512x512">512 × 512 — nhanh</option>
+              <option value="640x640">640 × 640</option>
+              <option value="768x768">768 × 768 — đẹp</option>
+              <option value="512x768">512 × 768 — portrait</option>
+              <option value="768x512">768 × 512 — landscape</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Seed (-1 = random)</label>
+            <div class="seed-row">
+              <input type="number" id="seed-val" value="-1" min="-1">
+              <button onclick="document.getElementById('seed-val').value=Math.floor(Math.random()*999999)">🎲</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-generate" id="gen-btn" onclick="handleGenerate()">🎨 Generate từ Sketch</button>
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
+        <div class="progress-label" id="progress-label">Đang xử lý...</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="status-bar">Đang kiểm tra server...</div>
+</div>
+
+<script>
+const API = "http://localhost:8000";
+let currentMode = "sketch";
+
+// ── Story state ───────────────────────────────────────────────────
+// character/action/location/mood/style are optional Phase 2B structured
+// fields — empty string means "not provided", falls back to the
+// existing keyword-based detection on the backend (see compare_scenes()
+// in backend/main.py). Only non-empty ones are sent to the API.
+let storyScenes  = [{prompt:"", result:null, character:"", action:"", location:"", mood:"", style:""}];
+let currentScene = 0;
+let expandedAdvanced = new Set(); // scene indices with the optional-fields panel open
+
+// ── Mode ──────────────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  ["sketch","text","story"].forEach(m => {
+    document.getElementById(`tab-${m}`).classList.toggle("active", m===mode);
+    const p = document.getElementById(`${m}-panel`);
+    if(p) p.style.display = m===mode ? "block" : "none";
+  });
+  // Settings chỉ hiện khi sketch/text
+  document.getElementById("main-settings").style.display = mode==="story" ? "none" : "block";
+  document.getElementById("cn-type-field").style.opacity  = mode==="sketch" ? "1" : "0.4";
+  document.getElementById("cn-scale-field").style.opacity = mode==="sketch" ? "1" : "0.4";
+  document.getElementById("gen-btn").textContent =
+    mode==="sketch" ? "🎨 Generate từ Sketch" : "🎨 Generate từ Text";
+  if(mode==="story") renderStoryScenes();
+}
+
+// ── Canvas ────────────────────────────────────────────────────────
+const canvas = document.getElementById("sketch-canvas");
+const ctx = canvas.getContext("2d");
+ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+let isDrawing=false, tool="pen", brushSize=3, brushColor="#000000", lastX=0, lastY=0;
+
+function getPos(e){
+  const r=canvas.getBoundingClientRect();
+  const sx=canvas.width/r.width, sy=canvas.height/r.height;
+  const s=e.touches?e.touches[0]:e;
+  return {x:(s.clientX-r.left)*sx, y:(s.clientY-r.top)*sy};
+}
+function startDraw(e){e.preventDefault();isDrawing=true;const p=getPos(e);lastX=p.x;lastY=p.y;ctx.beginPath();ctx.arc(p.x,p.y,(tool==="eraser"?brushSize*3:brushSize)/2,0,Math.PI*2);ctx.fillStyle=tool==="eraser"?"#fff":brushColor;ctx.fill();}
+function draw(e){if(!isDrawing)return;e.preventDefault();const p=getPos(e);ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(p.x,p.y);ctx.strokeStyle=tool==="eraser"?"#fff":brushColor;ctx.lineWidth=tool==="eraser"?brushSize*3:brushSize;ctx.lineCap="round";ctx.lineJoin="round";ctx.stroke();lastX=p.x;lastY=p.y;}
+function stopDraw(){isDrawing=false;}
+canvas.addEventListener("mousedown",startDraw);canvas.addEventListener("mousemove",draw);canvas.addEventListener("mouseup",stopDraw);canvas.addEventListener("mouseleave",stopDraw);
+canvas.addEventListener("touchstart",startDraw,{passive:false});canvas.addEventListener("touchmove",draw,{passive:false});canvas.addEventListener("touchend",stopDraw);
+
+function setTool(t){tool=t;document.getElementById("btn-pen").classList.toggle("active",t==="pen");document.getElementById("btn-eraser").classList.toggle("active",t==="eraser");}
+function clearCanvas(){ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);}
+function loadSketchFromFile(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{const img=new Image();img.onload=()=>{ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);const s=Math.min(canvas.width/img.width,canvas.height/img.height);const w=img.width*s,h=img.height*s;ctx.drawImage(img,(canvas.width-w)/2,(canvas.height-h)/2,w,h);showProgress(0,`✅ Đã load: ${file.name}`);document.getElementById("progress-wrap").classList.add("show");};img.src=e.target.result;};
+  reader.readAsDataURL(file);input.value="";
+}
+
+// ── Style tags ────────────────────────────────────────────────────
+function toggleTag(el,style){
+  el.classList.toggle("on");
+  const pe=document.getElementById("prompt");let v=pe.value.trim();
+  if(el.classList.contains("on")){v=v?v+", "+style:style;}
+  else{v=v.replace(new RegExp(",?\\s*"+style.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+"\\s*,?","g"),",").replace(/^,|,$/g,"").trim();}
+  pe.value=v;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
+function showProgress(pct,label){
+  document.getElementById("progress-wrap").classList.add("show");
+  document.getElementById("progress-fill").style.width=pct+"%";
+  document.getElementById("progress-label").textContent=label;
+}
+function showStoryProgress(pct,label){
+  document.getElementById("story-progress").classList.add("show");
+  document.getElementById("story-fill").style.width=pct+"%";
+  document.getElementById("story-label").textContent=label;
+}
+function getSizeParams(){
+  const v=document.getElementById("img-size").value.split("x");
+  return {width:parseInt(v[0]),height:parseInt(v[1])};
+}
+function getParams(){
+  const s=getSizeParams();
+  return {
+    prompt:document.getElementById("prompt").value.trim(),
+    negative_prompt:document.getElementById("neg-prompt").value,
+    steps:parseInt(document.getElementById("v-steps").textContent),
+    guidance_scale:parseFloat(document.getElementById("v-guid").textContent),
+    controlnet_scale:parseFloat(document.getElementById("v-cn").textContent),
+    use_refinement:document.getElementById("use-refine").value==="1",
+    refine_strength:parseFloat(document.getElementById("v-ref").textContent),
+    refine_steps:parseInt(document.getElementById("v-rstep").textContent),
+    width:s.width,height:s.height,
+    seed:parseInt(document.getElementById("seed-val").value)||(-1)
+  };
+}
+function showResult(mode,b64){
+  const imgId=mode==="sketch"?"result-sketch":"result-text";
+  const phId =mode==="sketch"?"placeholder-sketch":"placeholder-text";
+  const dlId =mode==="sketch"?"dl-sketch":"dl-text";
+  const fname=mode==="sketch"?"sketch_output.jpg":"text_output.jpg";
+  const src=`data:image/jpeg;base64,${b64}`;
+  document.getElementById(imgId).src=src;document.getElementById(imgId).style.display="block";
+  document.getElementById(phId).style.display="none";
+  const ba=atob(b64),arr=new Uint8Array(ba.length);
+  for(let i=0;i<ba.length;i++)arr[i]=ba.charCodeAt(i);
+  const blob=new Blob([arr],{type:"image/jpeg"});
+  const dl=document.getElementById(dlId);dl.href=URL.createObjectURL(blob);dl.download=fname;dl.style.display="inline";
+}
+
+// ── Generate Sketch / Text ─────────────────────────────────────────
+function handleGenerate(){if(currentMode==="sketch")generateSketch();else generateText();}
+
+async function generateSketch(){
+  const p=getParams();if(!p.prompt){alert("Hãy nhập prompt!");return;}
+  const btn=document.getElementById("gen-btn");btn.disabled=true;btn.textContent="⏳ Đang generate...";
+  showProgress(10,"Đang gửi sketch...");
+  const b64=canvas.toDataURL("image/png");
+  try{
+    showProgress(30,`ControlNet đang chạy (${p.use_refinement?"30–60":"15–35"} giây)...`);
+    const res=await fetch(`${API}/generate`,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({sketch_base64:b64,...p,controlnet_type:document.getElementById("cn-type").value})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.detail||"Lỗi server");
+    showProgress(100,"Hoàn tất! ✅");showResult("sketch",data.image_base64);
+  }catch(err){showProgress(0,`❌ ${err.message}`);}
+  finally{btn.disabled=false;btn.textContent="🎨 Generate từ Sketch";}
+}
+
+async function generateText(){
+  const p=getParams();if(!p.prompt){alert("Hãy nhập prompt!");return;}
+  const btn=document.getElementById("gen-btn");btn.disabled=true;btn.textContent="⏳ Đang generate...";
+  showProgress(30,"Stable Diffusion đang chạy...");
+  try{
+    const res=await fetch(`${API}/generate-text`,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({sketch_base64:"",...p})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.detail||"Lỗi server");
+    showProgress(100,"Hoàn tất! ✅");showResult("text",data.image_base64);
+  }catch(err){showProgress(0,`❌ ${err.message}`);}
+  finally{btn.disabled=false;btn.textContent="🎨 Generate từ Text";}
+}
+
+// ── Story Mode ────────────────────────────────────────────────────
+function renderStoryScenes(){
+  const list=document.getElementById("scenes-list");
+  list.innerHTML="";
+  storyScenes.forEach((s,i)=>{
+    const div=document.createElement("div");
+    div.className="scene-box"+(i===currentScene?" active":"");
+    div.innerHTML=`
+      <div class="scene-box-num">CẢNH ${i+1}${i===0?" (Text-to-Image)":` (từ ảnh ${i})`}</div>
+      <textarea placeholder= "${i===0
+    ? 'VD: a brown dog playing in a green yard'
+    : 'VD: the brown dog and a white cat in the yard (dùng tên rõ ràng, không dùng It/They)'
+  }..." "Mô tả cảnh ${i+1}..." oninput="storyScenes[${i}].prompt=this.value">${s.prompt}</textarea>
+      <button type="button" class="adv-toggle" onclick="toggleAdvanced(${i})">${expandedAdvanced.has(i)?"▲":"▼"} Chi tiết nâng cao (tùy chọn)</button>
+      ${expandedAdvanced.has(i)?`
+      <div class="scene-advanced">
+        <div class="grid2">
+          <div class="field"><label>Character</label><input type="text" value="${s.character||""}" placeholder="vd: young woman, red hair" oninput="storyScenes[${i}].character=this.value"></div>
+          <div class="field"><label>Action</label><input type="text" value="${s.action||""}" placeholder="vd: running" oninput="storyScenes[${i}].action=this.value"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Location</label><input type="text" value="${s.location||""}" placeholder="vd: forest" oninput="storyScenes[${i}].location=this.value"></div>
+          <div class="field"><label>Mood</label><input type="text" value="${s.mood||""}" placeholder="vd: energetic" oninput="storyScenes[${i}].mood=this.value"></div>
+        </div>
+        <div class="field"><label>Style</label><input type="text" value="${s.style||""}" placeholder="vd: realistic photo, cinematic" oninput="storyScenes[${i}].style=this.value"></div>
+        <div class="hint">Bỏ trống = dùng phát hiện tự động từ prompt như trước (không bắt buộc).</div>
+      </div>`:""}
+      ${storyScenes.length>1?`<button class="scene-del" onclick="deleteScene(${i})">✕</button>`:""}
+    `;
+    div.onclick=(e)=>{if(!e.target.matches("textarea,button,input")){goToScene(i);}};
+    list.appendChild(div);
+  });
+  updateNav();
+  renderThumbStrip();
+  updateStoryView();
+}
+
+function addScene(){
+  storyScenes.push({prompt:"",result:null,character:"",action:"",location:"",mood:"",style:""});
+  currentScene=storyScenes.length-1;
+  renderStoryScenes();
+}
+
+function toggleAdvanced(i){
+  if(expandedAdvanced.has(i)) expandedAdvanced.delete(i);
+  else expandedAdvanced.add(i);
+  renderStoryScenes();
+}
+
+function deleteScene(idx){
+  if(storyScenes.length<=1)return;
+  storyScenes.splice(idx,1);
+  if(currentScene>=storyScenes.length)currentScene=storyScenes.length-1;
+  renderStoryScenes();
+}
+
+function goScene(dir){
+  goToScene(currentScene+dir);
+}
+
+function goToScene(idx){
+  if(idx<0||idx>=storyScenes.length)return;
+  currentScene=idx;
+  renderStoryScenes();
+}
+
+function updateNav(){
+  document.getElementById("scene-counter").textContent=`${currentScene+1} / ${storyScenes.length}`;
+  document.getElementById("prev-btn").disabled=currentScene<=0;
+  document.getElementById("next-btn").disabled=currentScene>=storyScenes.length-1;
+}
+
+function updateStoryView(){
+  const scene=storyScenes[currentScene];
+  const n=currentScene+1;
+  document.getElementById("story-result-title").textContent=`🎬 Cảnh ${n}`;
+  const img=document.getElementById("story-result-img");
+  const ph=document.getElementById("story-ph");
+  const badge=document.getElementById("story-img-badge");
+  const dl=document.getElementById("story-img-dl");
+
+  if(scene.result){
+    const src=`data:image/jpeg;base64,${scene.result}`;
+    img.src=src; img.style.display="block"; ph.style.display="none";
+    badge.textContent=`Cảnh ${n}`;badge.style.display="block";
+    const ba=atob(scene.result),arr=new Uint8Array(ba.length);
+    for(let i=0;i<ba.length;i++)arr[i]=ba.charCodeAt(i);
+    dl.href=URL.createObjectURL(new Blob([arr],{type:"image/jpeg"}));
+    dl.download=`story_scene_${n}.jpg`;dl.style.display="block";
+  } else {
+    img.style.display="none";ph.style.display="flex";
+    badge.style.display="none";dl.style.display="none";
+  }
+}
+
+function renderThumbStrip(){
+  const strip=document.getElementById("thumb-strip");
+  strip.innerHTML="";
+  storyScenes.forEach((s,i)=>{
+    const div=document.createElement("div");
+    div.className="thumb"+(i===currentScene?" active":"")+(s.result?"":" pending");
+    if(s.result){
+      div.innerHTML=`<img src="data:image/jpeg;base64,${s.result}"/>`;
+    } else {
+      div.textContent=`Cảnh ${i+1}`;
+    }
+    div.onclick=()=>goToScene(i);
+    strip.appendChild(div);
+  });
+}
+
+async function generateStory(){
+  const emptyScenes=storyScenes.filter(s=>!s.prompt.trim());
+  if(emptyScenes.length>0){alert("Vui lòng điền prompt cho tất cả các cảnh!");return;}
+
+  const btn=document.getElementById("story-btn");
+  btn.disabled=true;btn.textContent="⏳ Đang generate story...";
+
+  const sv=document.getElementById("story-size").value.split("x");
+  const sw=parseInt(sv[0]),sh=parseInt(sv[1]);
+
+  const payload={
+    scenes: storyScenes.map(s=>{
+      const scene={
+        prompt:s.prompt,
+        negative_prompt:document.getElementById("story-neg-prompt").value
+      };
+      // Structured fields (Phase 2B) are optional — only send ones the
+      // user actually filled in; omitted ones fall back to the existing
+      // keyword-based detection on the backend, exactly as before.
+      ["character","action","location","mood","style"].forEach(k=>{
+        if(s[k] && s[k].trim()) scene[k]=s[k].trim();
+      });
+      return scene;
+    }),
+    steps:          parseInt(document.getElementById("sv-steps").textContent),
+    guidance_scale: parseFloat(document.getElementById("sv-guid").textContent),
+    base_strength:  parseFloat(document.getElementById("sv-trans").textContent),
+    width:sw, height:sh,
+    seed: parseInt(document.getElementById("seed-val").value)||(-1)
+  };
+
+  showStoryProgress(10,`Bắt đầu generate ${storyScenes.length} cảnh...`);
+
+  try{
+    showStoryProgress(30,`Đang generate ${storyScenes.length} cảnh (~${storyScenes.length*25} giây)...`);
+    const res=await fetch(`${API}/generate-story`,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
+    });
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.detail||"Lỗi server");
+
+    // Xoá kết quả cũ của TẤT CẢ các cảnh trước khi gán kết quả mới —
+    // nếu lần chạy này chỉ thành công một phần (data.total < số cảnh),
+    // các cảnh sau điểm lỗi không được giữ lại ảnh của lần chạy trước đó.
+    storyScenes.forEach(s=>{s.result=null;});
+    data.scenes.forEach((b64,i)=>{storyScenes[i].result=b64;});
+
+    if(data.total===0){
+      // Cảnh 1 đã lỗi — không có gì để hiển thị, xử lý như lỗi thông thường.
+      throw new Error(data.error||data.detail||"Lỗi generate cảnh 1");
+    }
+
+    if(data.success){
+      showStoryProgress(100,`✅ Hoàn tất ${data.total} cảnh!`);
+    }else{
+      // Scene data.failed_scene bị lỗi giữa story — các cảnh trước đó
+      // (data.scenes) vẫn được giữ lại và hiển thị, không bị mất như
+      // trước đây (lúc trước lỗi ở bất kỳ cảnh nào cũng làm mất toàn bộ
+      // story, kể cả các cảnh đã generate xong).
+      showStoryProgress(100,
+        `⚠️ Dừng ở cảnh ${data.failed_scene}/${data.requested_total} — `+
+        `đã giữ lại ${data.total} cảnh trước đó. Lỗi: ${data.error}`);
+    }
+    renderStoryScenes();
+    // Hiện cảnh đầu tiên
+    goToScene(0);
+
+  }catch(err){
+    showStoryProgress(0,`❌ Lỗi: ${err.message}`);
+  }finally{
+    btn.disabled=false;btn.textContent="📖 Generate toàn bộ Story";
+  }
+}
+
+// ── Server status ─────────────────────────────────────────────────
+async function checkStatus(){
+  try{
+    const res=await fetch(`${API}/health`);const data=await res.json();
+    document.getElementById("status-bar").textContent=`✅ ${data.status} | GPU: ${data.gpu} | Model: ${data.model}`;
+    document.getElementById("model-badge").textContent=`Model: ${data.model}`;
+  }catch{
+    document.getElementById("status-bar").textContent="❌ Server offline — chạy: python backend/main.py";
+    document.getElementById("model-badge").textContent="Offline";
+    document.getElementById("model-badge").style.background="#FCEBEB";
+    document.getElementById("model-badge").style.color="#A32D2D";
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+setMode("sketch");
+checkStatus();
+</script>
+</body>
+</html>

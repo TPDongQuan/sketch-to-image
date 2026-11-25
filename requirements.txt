@@ -1,0 +1,22 @@
+# Backend (FastAPI + Stable Diffusion / ControlNet) dependencies.
+#
+# Install PyTorch FIRST with the build matching your CUDA version. A plain
+# `pip install torch` on Windows gives a CPU-only build. For CUDA 12.4:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+# Then:
+#   pip install -r requirements.txt
+
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+pillow
+numpy
+opencv-python-headless
+
+# These four are version-sensitive; the combination below is the one the
+# project was developed and tested with.
+diffusers==0.30.0
+transformers==4.44.0
+tokenizers==0.19.1
+accelerate==0.33.0
